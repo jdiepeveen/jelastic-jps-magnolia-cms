@@ -1,0 +1,70 @@
+{
+  "jpsVersion": "0.9",
+  "jpsType": "install",
+  "application": {
+    "id":"magnolia-cms",
+    "name": "Magnolia CMS",
+    "version": "0.0.1",
+    "logo": "https://gitlab.trimm.nl/jelastic-jps/magnolia-cms/raw/master/images/view.png",
+    "type": "java",
+    "homepage": "https://www.magnolia-cms.com/",
+    "description": "Basic Magnolia CMS setup with Nginx, Tomcat 8.5 and PerconaDB. Ready for receiving the war files!",
+    "categories": [
+      "apps/content-management"
+    ],
+    "env": {
+      "topology": {
+        "ha": false,
+        "engine": "java8",
+        "ssl": false,
+        "nodes": [
+          {
+            "count": 1,
+            "extip": false,
+            "fixedCloudlets": 1,
+            "flexibleCloudlets": 32,
+            "nodeType": "tomcat85"
+          },
+          {
+            "count": 1,
+            "extip": false,
+            "fixedCloudlets": 1,
+            "flexibleCloudlets": 4,
+            "nodeType": "nginx"
+          }
+        ]
+      },
+      "deployments": [],
+      "configs": [
+        {
+          "replacements": [
+            {
+              "replacement": "${env.appid}",
+              "pattern": "{{web_user}}"
+            },
+            {
+              "replacement": "${user.appPassword}",
+              "pattern": "{{web_password}}"
+            }
+          ]
+        }
+      ]
+    },
+    "upload": [
+      {
+        "nodeType": "nginx",
+        "sourcePath": "https://gitlab.trimm.nl/jelastic-jps/magnolia-cms/raw/master/config/nginx/conf.d/.htpasswd",
+        "destPath": "${SERVER_CONF_D}"
+      },
+      {
+        "nodeType": "nginx",
+        "sourcePath": "https://gitlab.trimm.nl/jelastic-jps/magnolia-cms/raw/master/config/nginx/conf.d/basic_auth.conf",
+        "destPath": "${SERVER_CONF_D}"
+      }
+    ],
+    "success": {
+      "text": "htaccess:<br/>Username: ${env.appid} <br/>Password: ${user.appPassword}",
+      "email": false
+    }
+  }
+}
