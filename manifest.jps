@@ -8,10 +8,22 @@
     "logo": "https://gitlab.trimm.nl/jelastic-jps/magnolia-cms/raw/master/images/view.png",
     "type": "java",
     "homepage": "https://www.magnolia-cms.com/",
-    "description": "Basic Magnolia CMS setup with Nginx, Tomcat 8.5 and PerconaDB. Ready for receiving the war files!",
+    "description": "Magnolia CMS setup with Nginx, Tomcat 8.5 and PerconaDB",
     "categories": [
       "apps/content-management"
     ],
+    "settings": {
+      "fields": [
+        {
+          "type": "spinner",
+          "name": "nodes",
+          "caption": "Nodes in Cluster",
+          "min": 1,
+          "max": 10,
+          "default": 2
+        }
+      ]
+    },
     "env": {
       "topology": {
         "ha": false,
@@ -31,6 +43,13 @@
             "fixedCloudlets": 1,
             "flexibleCloudlets": 4,
             "nodeType": "nginx"
+          },
+          {
+            "count": 1,
+            "extip": false,
+            "fixedCloudlets": 1,
+            "flexibleCloudlets": 16,
+            "nodeType": "Percona"
           }
         ]
       },
@@ -50,6 +69,17 @@
         }
       ]
     },
+    "onInstall": {
+      "executeShellCommands": [
+        {
+          "nodeType": "Percona",
+          "commands": [
+            "curl -fsSL 'https://gitlab.trimm.nl/jelastic-jps/magnolia-cms/raw/master/scripts/createDb.sh' -o /tmp/createDb.sh",
+            "/bin/bash -x /tmp/createDb.sh ${nodes.sqldb.password} ${settings.db_user} wordpress ${user.appPassword} 2>&1 1>>/tmp/createDatabase.log"
+          ]
+        }
+      ]
+    },
     "upload": [
       {
         "nodeType": "nginx",
@@ -63,7 +93,7 @@
       }
     ],
     "success": {
-      "text": "htaccess:<br/>Username: ${env.appid} <br/>Password: ${user.appPassword}",
+      "text": "database:<br/>Username: ${settings.db_user}<br/>htaccess:<br/>Username: ${env.appid} <br/>Password: ${user.appPassword}",
       "email": false
     }
   }
