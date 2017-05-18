@@ -74,8 +74,8 @@
         {
           "nodeType": "Percona",
           "commands": [
-            "curl -fsSL 'https://gitlab.trimm.nl/jelastic-jps/magnolia-cms/raw/master/scripts/createDb.sh' -o /tmp/createDb.sh",
-            "/bin/bash -x /tmp/createDb.sh ${nodes.sqldb.password} ${settings.db_user} wordpress ${user.appPassword} 2>&1 1>>/tmp/createDatabase.log"
+            "curl -fsSL 'https://github.com/jdiepeveen/jelastic-jps-magnolia-cms/raw/master/scripts/createDb.sh' -o /tmp/createDb.sh",
+            "/bin/bash -x /tmp/createDb.sh ${nodes.sqldb.password} ${settings.db_user} magnolia ${user.appPassword} 2>&1 1>>/tmp/createDatabase.log"
           ]
         }
       ]
@@ -88,7 +88,7 @@
       },
       {
         "nodeType": "nginx",
-        "sourcePath": "https://gitlab.trimm.nl/jelastic-jps/magnolia-cms/raw/master/config/nginx/conf.d/basic_auth.conf",
+        "sourcePath": "https://github.com/jdiepeveen/jelastic-jps-magnolia-cms/raw/master/config/nginx/conf.d/basic_auth.conf",
         "destPath": "${SERVER_CONF_D}"
       }
     ],
