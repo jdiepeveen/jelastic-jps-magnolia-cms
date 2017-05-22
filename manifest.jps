@@ -5,7 +5,7 @@
     "id":"magnolia-cms",
     "name": "Magnolia CMS",
     "version": "0.0.1",
-    "logo": "https://gitlab.trimm.nl/jelastic-jps/magnolia-cms/raw/master/images/view.png",
+    "logo": "https://github.com/jdiepeveen/jelastic-jps-magnolia-cms/raw/master/images/view.png",
     "type": "java",
     "homepage": "https://www.magnolia-cms.com/",
     "description": "Magnolia CMS setup with Nginx, Tomcat 8.5 and PerconaDB",
@@ -15,12 +15,40 @@
     "settings": {
       "fields": [
         {
-          "type": "spinner",
-          "name": "nodes",
-          "caption": "Nodes in Cluster",
-          "min": 1,
-          "max": 10,
-          "default": 2
+          "type": "list",
+          "name": "environment",
+          "caption": "Environment",
+          "values": {
+            "test": "Test",
+            "acceptance": "Acceptance",
+            "production": "Production"
+          },
+          "default": "test",
+          "editable": true
+        },
+        {
+          "type": "radio-fieldset",
+          "name": "htaccess",
+          "default": "1",
+          "values": {
+            "1": "Enable",
+            "2": "Disable"
+          },
+          "showif": {
+            "1": [
+              {
+                "type": "string",
+                "caption": "Usename",
+                "name": "htaccess_user"
+              },
+              {
+                "type": "string",
+                "caption": "Password",
+                "name": "htaccess_password"
+              }
+            ],
+            "2": []
+          }
         }
       ]
     },
@@ -58,12 +86,16 @@
         {
           "replacements": [
             {
-              "replacement": "${env.appid}",
-              "pattern": "{{web_user}}"
+              "replacement": "${settings.htaccess_user}",
+              "pattern": "{{htaccess_user}}"
             },
             {
-              "replacement": "${user.appPassword}",
-              "pattern": "{{web_password}}"
+              "replacement": "${settings.htaccess_password}",
+              "pattern": "{{htaccess_password}}"
+            },
+            {
+              "replacement": "${settings.environment}",
+              "pattern": "{{environment}}"
             }
           ]
         }
@@ -83,7 +115,7 @@
     "upload": [
       {
         "nodeType": "nginx",
-        "sourcePath": "https://gitlab.trimm.nl/jelastic-jps/magnolia-cms/raw/master/config/nginx/conf.d/.htpasswd",
+        "sourcePath": "https://github.com/jdiepeveen/jelastic-jps-magnolia-cms/raw/master/config/nginx/conf.d/.htpasswd",
         "destPath": "${SERVER_CONF_D}"
       },
       {
@@ -94,7 +126,7 @@
     ],
     "success": {
       "text": "database:<br/>Username: ${settings.db_user}<br/>htaccess:<br/>Username: ${env.appid} <br/>Password: ${user.appPassword}",
-      "email": false
+      "email": true
     }
   }
 }
