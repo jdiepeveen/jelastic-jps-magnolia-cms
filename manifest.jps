@@ -8,15 +8,15 @@
     "logo": "https://github.com/jdiepeveen/jelastic-jps-magnolia-cms/raw/master/images/view.png",
     "type": "java",
     "homepage": "https://www.magnolia-cms.com/",
-    "description": "Magnolia CMS setup with Nginx, Tomcat 8.5 and PerconaDB",
+    "description": "Setup for ${fn.password} basic Magnolia CMS site with Nginx, Tomcat 8.5 and PerconaDB",
     "categories": [
-      "apps/content-management"
+      "apps/cms"
     ],
     "settings": {
       "fields": [
         {
-          "type": "list",
           "name": "environment",
+          "type": "list",
           "caption": "Environment",
           "values": {
             "test": "Test",
@@ -27,15 +27,15 @@
           "editable": true
         },
         {
-          "type": "radio-fieldset",
           "name": "htaccess",
-          "default": "1",
+          "type": "radio-fieldset",
           "values": {
-            "1": "Enable",
-            "2": "Disable"
+            "enable": "Enable",
+            "disable": "Disable"
           },
-          "showif": {
-            "1": [
+          "default": "enable",
+          "showIf": {
+            "enable": [
               {
                 "type": "string",
                 "caption": "Usename",
@@ -46,8 +46,7 @@
                 "caption": "Password",
                 "name": "htaccess_password"
               }
-            ],
-            "2": []
+            ]
           }
         }
       ]
@@ -84,6 +83,9 @@
       "deployments": [],
       "configs": [
         {
+          "restart": true,
+          "nodeType": "nginx",
+          "path": "${SERVER_CONF_D}/basic_auth.conf",
           "replacements": [
             {
               "replacement": "${settings.htaccess_user}",
@@ -92,26 +94,45 @@
             {
               "replacement": "${settings.htaccess_password}",
               "pattern": "{{htaccess_password}}"
-            },
-            {
-              "replacement": "${settings.environment}",
-              "pattern": "{{environment}}"
             }
           ]
         }
       ]
     },
-    "onInstall": {
-      "executeShellCommands": [
-        {
-          "nodeType": "Percona",
-          "commands": [
-            "curl -fsSL 'https://github.com/jdiepeveen/jelastic-jps-magnolia-cms/raw/master/scripts/createDb.sh' -o /tmp/createDb.sh",
-            "/bin/bash -x /tmp/createDb.sh ${nodes.sqldb.password} ${settings.db_user} magnolia ${user.appPassword} 2>&1 1>>/tmp/createDatabase.log"
-          ]
+    "onInstall": [
+      {
+        "call": [
+          "addEnvironment",
+          "createDb"
+        ]
+      }
+    ],
+    "procedures": [
+      {
+        "id": "addEnvironment",
+        "onCall": {
+          "executeShellCommands": {
+            "nodeType": "tomcat8",
+            "commands": [
+              "echo '-Denvironment=${settings.environment}' >> ${SERVER_CONF}/variables.conf"
+            ]
+          }
         }
-      ]
-    },
+      },
+      {
+        "id": "createDb",
+        "onCall": {
+          "executeShellCommands": {
+            "nodeType": "Percona",
+            "commands": [
+              "curl -fsSL 'https://github.com/jdiepeveen/jelastic-jps-magnolia-cms/raw/master/scripts/createDb.sh' -o /tmp/createDb.sh",
+              "/bin/bash -x /tmp/createDb.sh ${nodes.sqldb.password} magnolia ${user.appPassword} 2>&1 1>>/tmp/createDatabase.log",
+              "rm /tmp/createDb.sh"
+            ]
+          }
+        }
+      }
+    ],
     "upload": [
       {
         "nodeType": "nginx",
@@ -125,7 +146,7 @@
       }
     ],
     "success": {
-      "text": "database:<br/>Username: ${settings.db_user}<br/>htaccess:<br/>Username: ${env.appid} <br/>Password: ${user.appPassword}",
+      "text": "Database: ${nodes.mysql5.address}<br/>Username: ${settings.db_user}<br/>Password: ${nodes.sqldb.password}<br/><br/>htaccess:<br/>Username: ${env.appid} <br/>Password: ${user.appPassword}",
       "email": true
     }
   }
