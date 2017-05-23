@@ -32,6 +32,13 @@
             "extip": false,
             "fixedCloudlets": 1,
             "flexibleCloudlets": 32
+          },
+          {
+            "nodeType": "Percona",
+            "count": 1,
+            "extip": false,
+            "fixedCloudlets": 1,
+            "flexibleCloudlets": 16
           }
         ]
       },
