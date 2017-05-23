@@ -47,7 +47,8 @@
     },
     "onInstall": {
       "call": [
-        "setTomcatVariables"
+        "setTomcatVariables",
+        "createDb"
       ]
     },
     "procedures": [
@@ -67,6 +68,21 @@
                 "user": "root"
               }
             ]
+          }
+        ]
+      },
+      {
+        "id": "createDb",
+        "onCall": [
+          {
+            "executeShellCommands": {
+              "nodeType": "Percona",
+              "commands": [
+                "curl -fsSL 'https://github.com/jdiepeveen/jelastic-jps-magnolia-cms/raw/master/scripts/createDb.sh' -o /tmp/createDb.sh",
+                "/bin/bash -x /tmp/createDb.sh ${nodes.sqldb.password} magnolia ${user.appPassword} 2>&1 1>>/tmp/createDatabase.log",
+                "rm /tmp/createDb.sh"
+              ]
+            }
           }
         ]
       }
@@ -90,8 +106,8 @@
     },
     "upload": [],
     "success": {
-      "text": "/text/success.html",
-      "email": "/text/success.html"
+      "text": "Please use the credentials below to gain admin access to your Perconadb node:<br><strong>Host:</strong> ${nodes.sqldb.address}<br/><strong>Username:</strong> magnolia<br/><strong>Password:</strong> ${user.appPassword}<br/>",
+      "email": "Please use the credentials below to gain admin access to your Perconadb node:<br><strong>Host:</strong> ${nodes.sqldb.address}<br/><strong>Username:</strong> magnolia<br/><strong>Password:</strong> ${user.appPassword}<br/>",
     }
   }
 }
