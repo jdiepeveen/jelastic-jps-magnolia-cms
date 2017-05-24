@@ -48,6 +48,7 @@
     "onInstall": {
       "call": [
         "setTomcatVariables",
+        "removeUnusedWebapps",
         "createDb"
       ]
     },
@@ -56,18 +57,27 @@
         "id": "setTomcatVariables",
         "onCall": [
           {
-            "executeShellCommands": [
+            "appendFile": [
               {
                 "nodeType": "tomcat85",
-                "commands": [
-                  "echo '-Denvironment=${settings.environment}' >> /opt/shared/conf/variables.conf",
-                  "echo '-Duser.timezone=Europe/Amsterdam' >> /opt/shared/conf/variables.conf",
-                  "rm -rf /opt/shared/webapps/docs",
-                  "rm -rf /opt/shared/webapps/examples"
-                ],
-                "user": "root"
+                "body": "-Denvironment=${settings.environment}\n-Duser.timezone=Europe/Amsterdam\n",
+                "path": "/opt/shared/conf/variables.conf"
               }
             ]
+          }
+        ]
+      },
+      {
+        "id": "removeUnusedWebapps",
+        "onCall": [
+          {
+            "executeShellCommands": {
+              "nodeType": "tomcat85",
+              "commands": [
+                "rm -rf /opt/shared/webapps/docs",
+                "rm -rf /opt/shared/webapps/examples"
+              ]
+            }
           }
         ]
       },
@@ -107,7 +117,7 @@
     "upload": [],
     "success": {
       "text": "Please use the credentials below to gain admin access to your Perconadb node:<br><strong>Host:</strong> ${nodes.sqldb.address}<br/><strong>Username:</strong> magnolia<br/><strong>Password:</strong> ${user.appPassword}<br/>",
-      "email": "Please use the credentials below to gain admin access to your Perconadb node:<br><strong>Host:</strong> ${nodes.sqldb.address}<br/><strong>Username:</strong> magnolia<br/><strong>Password:</strong> ${user.appPassword}<br/>",
+      "email": "Please use the credentials below to gain admin access to your Perconadb node:<br><strong>Host:</strong> ${nodes.sqldb.address}<br/><strong>Username:</strong> magnolia<br/><strong>Password:</strong> ${user.appPassword}<br/>"
     }
   }
 }

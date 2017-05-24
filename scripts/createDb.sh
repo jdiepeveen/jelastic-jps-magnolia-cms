@@ -11,6 +11,9 @@ mysql -uroot -p${ROOT_PASS} << END
     CREATE USER '${NEW_USER}'@'localhost' IDENTIFIED BY '${NEW_PASS}';
     GRANT ALL ON magnolia_author.* TO '${NEW_USER}'@'localhost';
     GRANT ALL ON magnolia_public.* TO '${NEW_USER}'@'localhost';
+    CREATE USER '${NEW_USER}'@'127.0.0.1' IDENTIFIED BY '${NEW_PASS}';
+    GRANT ALL ON magnolia_author.* TO '${NEW_USER}'@'127.0.0.1';
+    GRANT ALL ON magnolia_public.* TO '${NEW_USER}'@'127.0.0.1';
     DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');
     FLUSH PRIVILEGES;
 END
