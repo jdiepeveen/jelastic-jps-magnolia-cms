@@ -1,6 +1,6 @@
 {
-  "jpsVersion": "0.9",
   "jpsType": "install",
+  "jpsVersion": "0.9",
   "application": {
     "id":"magnolia-cms",
     "name": "Magnolia CMS",
@@ -102,7 +102,7 @@
         {
           "name": "environment",
           "type": "list",
-          "caption": "Environment",
+          "caption": "Enviro nment",
           "values": {
             "test": "Test",
             "acceptance": "Acceptance",
@@ -111,13 +111,45 @@
           "default": "test",
           "editable": true,
           "required": true
+        },
+        {
+          "type": "displayfield",
+          "caption": "Htaccess"
+        },
+        {
+          "name": "htaccess",
+          "type": "radio-fieldset",
+          "caption": "Htaccess",
+          "values": {
+            "enable": "Enable",
+            "disable": "Disable"
+          },
+          "default": "enable",
+          "showIf": {
+            "enable": [
+              {
+                "type": "displayfield",
+                "caption": "Enter a username and generate a hash from your password. Use e.g. <a href=\"http://www.htpasswdgenerator.net/\" target=\"blank\">http://www.htpasswdgenerator.net/</a>"
+              },
+              {
+                "type": "string",
+                "caption": "Usename",
+                "name": "htaccess_user"
+              },
+              {
+                "type": "string",
+                "caption": "Password",
+                "name": "htaccess_password"
+              }
+            ]
+          }
         }
       ]
     },
     "upload": [],
     "success": {
-      "text": "Please use the credentials below to gain admin access to your Perconadb node:<br><strong>Host:</strong> ${nodes.sqldb.address}<br/><strong>Username:</strong> magnolia<br/><strong>Password:</strong> ${user.appPassword}<br/>",
-      "email": "Please use the credentials below to gain admin access to your Perconadb node:<br><strong>Host:</strong> ${nodes.sqldb.address}<br/><strong>Username:</strong> magnolia<br/><strong>Password:</strong> ${user.appPassword}<br/>"
+      "text": "Please use the credentials below to gain admin access to your database node:<br><strong>Host:</strong> ${nodes.sqldb.address}<br/><strong>Username:</strong> magnolia<br/><strong>Password:</strong> ${user.appPassword}<br/>",
+      "email": "Please use the credentials below to gain admin access to your database node:<br><strong>Host:</strong> ${nodes.sqldb.address}<br/><strong>Username:</strong> magnolia<br/><strong>Password:</strong> ${user.appPassword}<br/>"
     }
   }
 }

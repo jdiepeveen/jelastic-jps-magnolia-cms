@@ -1,0 +1,85 @@
+type: install
+name: Basic Magnolia CMS
+description: |
+  The JPS manifest contains the following nodes:
+  * Nginx
+  * Tomcat 8.5
+  * PerconaDB
+baseUrl: https://github.com/jdiepeveen/jelastic-jps-magnolia-cms/raw/master
+logo: https://github.com/jdiepeveen/jelastic-jps-magnolia-cms/raw/master/images/view.png
+engine: java8
+
+globals:
+  dbUsername:
+  dbPassword: ${fn.password}
+  authUsername:
+  authPassword: ${fn.password}
+
+settings:
+  fields:
+    - name: environment
+      type: list
+      caption: Environment
+      required: true
+      editable: true
+      regex: "^[a-zA-Z0-9-]+$"
+      values:
+        test: test
+        acceptance: acceptance
+        production: production
+    - name: basicAuth
+      type: radio-fieldset
+      caption: Authentication
+      default: disabled
+      values:
+        enabled: Enabled authentication
+        disabled: Disabled authentication
+      showIf:
+        enabled:
+          - name: authUsername
+            type: string
+            caption: Username
+            required: true
+          - name: authPassword
+            type: string
+            caption: Password
+            required: true
+
+    - name: maintenance
+      type: toggle
+      caption: Maintanance page
+
+nodes:
+  # Using dockerized Jelastic images
+  - nodeType: nginx
+    cloudlets: 4
+    nodeGroup: bl
+  - nodeType: tomcat85
+    env:
+      CATALINA_OPTS: -Denvironment=${settings.environment} -Duser.timezone=Europe/Amsterdam
+    cloudlets: 32
+  - nodeType: Percona
+    cloudlets: 16
+
+onInstall:
+  if (settings.basicAuth == 'enabled'):
+    log: "## Basic authentication is enabled"
+    cmd [nginx]:
+      - htpasswd -b -c /etc/nginx/conf.d/.htpasswd ${settings.authUsername} ${settings.authPassword}
+      - curl -fsSL \"${baseUrl}/config/nginx/conf.d/basic_auth.conf\" -o /etc/nginx/conf.d/basic_auth.conf
+    appendFile [nginx]:
+      path: /etc/jelastic/redeploy.conf
+      body: "/etc/nginx/conf.d/basic_auth.conf"
+
+  if (settings.maintenance == 'enabled'):
+    log: "## Maintenance page is enabled"
+    createFile [nginx]:
+      path: /tmp/maintenance/index.html
+#    appendFile [nginx]:
+#      path: /etc/jelastic/redeploy.conf
+#      body:
+
+  cmd [Percona]:
+    - curl -fsSL \"${baseUrl}/scripts/createDb.sh\" | /bin/bash -s ${nodes.sqldb.password} magnolia ${global.dbPassword}
+
+success:
