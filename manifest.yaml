@@ -53,7 +53,6 @@ nodes:
   # Using dockerized Jelastic images
   - nodeType: nginx
     cloudlets: 4
-    nodeGroup: bl
   - nodeType: tomcat85
     env:
       CATALINA_OPTS: -Denvironment=${settings.environment} -Duser.timezone=Europe/Amsterdam
@@ -65,19 +64,16 @@ onInstall:
   if (settings.basicAuth == 'enabled'):
     log: "## Basic authentication is enabled"
     cmd [nginx]:
-      - htpasswd -b -c /etc/nginx/conf.d/.htpasswd ${settings.authUsername} ${settings.authPassword}
+      - curl -fsSL \"${baseUrl}/scripts/createHtaccess.sh\" | /bin/bash -s ${settings.authUsername} ${settings.authPassword}
       - curl -fsSL \"${baseUrl}/config/nginx/conf.d/basic_auth.conf\" -o /etc/nginx/conf.d/basic_auth.conf
     appendFile [nginx]:
       path: /etc/jelastic/redeploy.conf
       body: "/etc/nginx/conf.d/basic_auth.conf"
 
-  if (settings.maintenance == 'enabled'):
+  if (settings.maintenance == true):
     log: "## Maintenance page is enabled"
     createFile [nginx]:
       path: /tmp/maintenance/index.html
-#    appendFile [nginx]:
-#      path: /etc/jelastic/redeploy.conf
-#      body:
 
   cmd [Percona]:
     - curl -fsSL \"${baseUrl}/scripts/createDb.sh\" | /bin/bash -s ${nodes.sqldb.password} magnolia ${global.dbPassword}
