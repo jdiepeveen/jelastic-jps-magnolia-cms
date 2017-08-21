@@ -4,16 +4,14 @@ description: |
   The JPS manifest contains the following nodes:
   * Nginx
   * Tomcat 8.5
-  * PerconaDB
+  * MariaDB 10
 baseUrl: https://github.com/jdiepeveen/jelastic-jps-magnolia-cms/raw/master
 logo: https://github.com/jdiepeveen/jelastic-jps-magnolia-cms/raw/master/images/view.png
 engine: java8
 
 globals:
-  dbUsername:
+  dbUsername: magnolia
   dbPassword: ${fn.password}
-  authUsername:
-  authPassword: ${fn.password}
 
 settings:
   fields:
@@ -50,32 +48,82 @@ settings:
       caption: Maintanance page
 
 nodes:
-  # Using dockerized Jelastic images
   - nodeType: nginx
     cloudlets: 4
+    nodeGroup: bl
+
   - nodeType: tomcat85
-    env:
-      CATALINA_OPTS: -Denvironment=${settings.environment} -Duser.timezone=Europe/Amsterdam
-    cloudlets: 32
-  - nodeType: Percona
     cloudlets: 16
+    nodeGroup: cp
+    env:
+      # Set environment and timezone variables
+      CATALINA_OPTS: -Denvironment=${settings.environment} -Duser.timezone=Europe/Amsterdam
+    volumes:
+      - /data
+    links:
+      -  sqldb:db
+
+  - nodeType: mariadb10
+    cloudlets: 6
+    nodeGroup: sqldb
+    env:
+      # Disable exposing ports to the outside
+      JELASTIC_EXPOSE: DISABLED
 
 onInstall:
+  createDirectory [tomcat85]: /data/magnolia
+
   if (settings.basicAuth == 'enabled'):
     log: "## Basic authentication is enabled"
-    cmd [nginx]:
-      - curl -fsSL \"${baseUrl}/scripts/createHtaccess.sh\" | /bin/bash -s ${settings.authUsername} ${settings.authPassword}
-      - curl -fsSL \"${baseUrl}/config/nginx/conf.d/basic_auth.conf\" -o /etc/nginx/conf.d/basic_auth.conf
-    appendFile [nginx]:
+    cmd [bl]:
+      - curl -fsSL ${baseUrl}/scripts/createHtaccess.sh | /bin/bash -s ${settings.authUsername} ${settings.authPassword}
+      - curl -fsSL ${baseUrl}/config/nginx/conf.d/basic_auth.conf -o /etc/nginx/conf.d/basic_auth.conf
+    appendFile [bl]:
       path: /etc/jelastic/redeploy.conf
-      body: "/etc/nginx/conf.d/basic_auth.conf"
+      body: "/etc/nginx/conf.d/basic_auth.conf\n/etc/nginx/conf.d/password.htpasswd"
 
   if (settings.maintenance == true):
     log: "## Maintenance page is enabled"
-    createFile [nginx]:
-      path: /tmp/maintenance/index.html
+    createFile [bl]:
+      path: /var/nginx/tmp/maintenance/index.html
 
-  cmd [Percona]:
-    - curl -fsSL \"${baseUrl}/scripts/createDb.sh\" | /bin/bash -s ${nodes.sqldb.password} magnolia ${global.dbPassword}
+  cmd [sqldb]:
+    - curl -fsSL ${baseUrl}/scripts/createDb.sh | /bin/bash -s ${nodes.sqldb.password} magnolia ${globals.dbPassword}
 
 success:
+  text: |
+    ####TLDR
+
+    * Database-url: db:3306
+    * Database user: ${globals.dbUsername}
+    * Database password: ${globals.dbPassword}
+    * Public: magnolia.home=/opt/tomcat/data/magnolia/public
+    * Author: magnolia.home=/opt/tomcat/data/magnolia/author
+
+    ### Magnolia settings
+    ##### Public:
+    Create in your project the following folder:
+    '/[project-webapp]/src/main/webapp/WEB-INF/config/${settings.environment}/ROOT/magnolia.properties'
+    Add the following properties:
+    ```
+    magnolia.home=/opt/tomcat/data/magnolia/public
+    ```
+    __DataSource__:
+    * url: jdbc:mysql://db:3306/public
+    * user: ${globals.dbUsername}
+    * password: ${globals.dbPassword} &successText
+    ---
+    ##### Author:
+    Create in your project the following folder:
+    '/[project-webapp]/src/main/webapp/WEB-INF/config/${settings.environment}/magnoliaAuthor/magnolia.properties'
+    Add the following properties:
+    ```
+    magnolia.home=/opt/tomcat/data/magnolia/author
+    ```
+    __DataSource__:
+    Use the following settings for the datasource:
+    * url: jdbc:mysql://db:3306/author
+    * user: ${globals.dbUsername}
+    * password: ${globals.dbPassword} &successText
+
+  email: <<*successText
