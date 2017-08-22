@@ -12,6 +12,7 @@ engine: java8
 globals:
   dbUsername: magnolia
   dbPassword: ${fn.password}
+  tomcatDataPath: /data
 
 settings:
   fields:
@@ -71,7 +72,7 @@ nodes:
       JELASTIC_EXPOSE: DISABLED
 
 onInstall:
-  createDirectory [tomcat85]: /data/magnolia
+  createDirectory [tomcat85]: ${globals.tomcatDataPath}/magnolia
 
   if (settings.basicAuth == 'enabled'):
     log: "## Basic authentication is enabled"
@@ -85,45 +86,38 @@ onInstall:
   if (settings.maintenance == true):
     log: "## Maintenance page is enabled"
     createFile [bl]:
-      path: /var/nginx/tmp/maintenance/index.html
+      path: /usr/share/nginx/html/.maintenance_off
 
   cmd [sqldb]:
     - curl -fsSL ${baseUrl}/scripts/createDb.sh | /bin/bash -s ${nodes.sqldb.password} magnolia ${globals.dbPassword}
 
 success:
   text: |
-    ####TLDR
-
+    #### TLDR
     * Database-url: db:3306
     * Database user: ${globals.dbUsername}
     * Database password: ${globals.dbPassword}
-    * Public: magnolia.home=/opt/tomcat/data/magnolia/public
-    * Author: magnolia.home=/opt/tomcat/data/magnolia/author
+    * Public: magnolia.home=${globals.tomcatDataPath}/magnolia/public
+    * Author: magnolia.home=${globals.tomcatDataPath}/magnolia/author
 
     ### Magnolia settings
-    ##### Public:
+    #### Public:
     Create in your project the following folder:
     '/[project-webapp]/src/main/webapp/WEB-INF/config/${settings.environment}/ROOT/magnolia.properties'
     Add the following properties:
-    ```
-    magnolia.home=/opt/tomcat/data/magnolia/public
-    ```
-    __DataSource__:
-    * url: jdbc:mysql://db:3306/public
+    `magnolia.home=${globals.tomcatDataPath}/magnolia/public`
+    ##### DataSource:
+    * url: `jdbc:mysql://db:3306/public`
     * user: ${globals.dbUsername}
     * password: ${globals.dbPassword} &successText
     ---
-    ##### Author:
+    #### Author:
     Create in your project the following folder:
     '/[project-webapp]/src/main/webapp/WEB-INF/config/${settings.environment}/magnoliaAuthor/magnolia.properties'
     Add the following properties:
-    ```
-    magnolia.home=/opt/tomcat/data/magnolia/author
-    ```
-    __DataSource__:
+    `magnolia.home=${globals.tomcatDataPath}/magnolia/author`
+    ##### DataSource:
     Use the following settings for the datasource:
-    * url: jdbc:mysql://db:3306/author
+    * url: `jdbc:mysql://db:3306/author`
     * user: ${globals.dbUsername}
-    * password: ${globals.dbPassword} &successText
-
-  email: <<*successText
+    * password: ${globals.dbPassword}
