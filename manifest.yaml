@@ -44,9 +44,9 @@ settings:
             caption: Password
             required: true
 
-    - name: maintenance
-      type: toggle
-      caption: Maintanance page
+#    - name: maintenance
+#      type: toggle
+#      caption: Maintanance page
 
 nodes:
   - nodeType: nginx
@@ -71,10 +71,13 @@ nodes:
       # Disable exposing ports to the outside
       JELASTIC_EXPOSE: DISABLED
 
-onInstall:
-  createDirectory [tomcat85]: ${globals.tomcatDataPath}/magnolia
-
-  if (settings.basicAuth == 'enabled'):
+actions:
+  createMagnoliaDataDirectory:
+    createDirectory [tomcat85]: ${globals.tomcatDataPath}/magnolia
+  createDatabase:
+    cmd [sqldb]:
+      - curl -fsSL ${baseUrl}/scripts/createDb.sh | /bin/bash -s ${nodes.sqldb.password} magnolia ${globals.dbPassword}
+  enableAuthentication:
     log: "## Basic authentication is enabled"
     cmd [bl]:
       - curl -fsSL ${baseUrl}/scripts/createHtaccess.sh | /bin/bash -s ${settings.authUsername} ${settings.authPassword}
@@ -82,14 +85,18 @@ onInstall:
     appendFile [bl]:
       path: /etc/jelastic/redeploy.conf
       body: "/etc/nginx/conf.d/basic_auth.conf\n/etc/nginx/conf.d/password.htpasswd"
-
-  if (settings.maintenance == true):
+  enableMaintenance:
     log: "## Maintenance page is enabled"
     createFile [bl]:
       path: /usr/share/nginx/html/.maintenance_off
 
-  cmd [sqldb]:
-    - curl -fsSL ${baseUrl}/scripts/createDb.sh | /bin/bash -s ${nodes.sqldb.password} magnolia ${globals.dbPassword}
+onInstall:
+  - createMagnoliaDataDirectory
+  - createDatabase
+  - if (settings.basicAuth == 'enabled'):
+    - enableAuthentication
+  - if (settings.maintenance == true):
+    - enableMaintenance
 
 success:
   text: |
@@ -99,6 +106,8 @@ success:
     * Database password: ${globals.dbPassword}
     * Public: magnolia.home=${globals.tomcatDataPath}/magnolia/public
     * Author: magnolia.home=${globals.tomcatDataPath}/magnolia/author
+    * Authentication username: ${settings.authUsername}
+    * Authentication password: ${settings.authPassword}
 
     ### Magnolia settings
     #### Public:
