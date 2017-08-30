@@ -13,6 +13,7 @@ globals:
   dbUsername: magnolia
   dbPassword: ${fn.password}
   tomcatDataPath: /data
+  ipRange: 10.0.%
 
 settings:
   fields:
@@ -26,7 +27,7 @@ settings:
         test: test
         acceptance: acceptance
         production: production
-    - name: basicAuth
+    - name: authentication
       type: radio-fieldset
       caption: Authentication
       default: disabled
@@ -76,7 +77,7 @@ actions:
     createDirectory [tomcat85]: ${globals.tomcatDataPath}/magnolia
   createDatabase:
     cmd [sqldb]:
-      - curl -fsSL ${baseUrl}/scripts/createDb.sh | /bin/bash -s ${nodes.sqldb.password} magnolia ${globals.dbPassword}
+      - curl -fsSL ${baseUrl}/scripts/createDb.sh | /bin/bash -s ${nodes.sqldb.password} magnolia ${globals.dbPassword} ${nodes.cp[1].address}
   enableAuthentication:
     log: "## Basic authentication is enabled"
     cmd [bl]:
@@ -85,29 +86,33 @@ actions:
     appendFile [bl]:
       path: /etc/jelastic/redeploy.conf
       body: "/etc/nginx/conf.d/basic_auth.conf\n/etc/nginx/conf.d/password.htpasswd"
-  enableMaintenance:
-    log: "## Maintenance page is enabled"
-    createFile [bl]:
-      path: /usr/share/nginx/html/.maintenance_off
+#  enableMaintenance:
+#    log: "## Maintenance page is enabled"
+#    # TODO: FIX Permission denied
+#    createFile [bl]:
+#      path: /usr/share/nginx/html/.maintenance_off
 
 onInstall:
   - createMagnoliaDataDirectory
   - createDatabase
-  - if (settings.basicAuth == 'enabled'):
+  - if (settings.authentication == 'enabled'):
     - enableAuthentication
   - if (settings.maintenance == true):
     - enableMaintenance
 
 success:
   text: |
-    #### TLDR
-    * Database-url: db:3306
-    * Database user: ${globals.dbUsername}
-    * Database password: ${globals.dbPassword}
+    ### TLDR
+    #### Database
+    * url: db:3306
+    * user: ${globals.dbUsername}
+    * password: ${globals.dbPassword}
+    #### Magnolia
     * Public: magnolia.home=${globals.tomcatDataPath}/magnolia/public
     * Author: magnolia.home=${globals.tomcatDataPath}/magnolia/author
-    * Authentication username: ${settings.authUsername}
-    * Authentication password: ${settings.authPassword}
+    #### Authentication (if enabled)
+    * username: ${settings.authUsername}
+    * password: ${settings.authPassword}
 
     ### Magnolia settings
     #### Public:
