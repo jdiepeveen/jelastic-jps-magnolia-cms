@@ -1,3 +1,3 @@
 #!/bin/bash
 
-touch /usr/share/nginx/html/.maintenance_off
+sudo touch /usr/share/nginx/html/.maintenance_off

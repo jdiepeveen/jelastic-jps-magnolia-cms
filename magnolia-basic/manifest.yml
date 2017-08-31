@@ -7,8 +7,8 @@ description: |
   * MariaDB 10
 
   SSL is enabled by default
-baseUrl: https://github.com/jdiepeveen/jelastic-jps-magnolia-cms/magnolia-basic/raw/master
-logo: https://github.com/jdiepeveen/jelastic-jps-magnolia-cms/magnolia-basic/raw/master/images/view.png
+baseUrl: https://github.com/jdiepeveen/jelastic-jps-magnolia-cms/raw/master/magnolia-basic
+logo: https://github.com/jdiepeveen/jelastic-jps-magnolia-cms/raw/master/images/view.png
 engine: java8
 ssl: true
 
@@ -100,8 +100,6 @@ actions:
     log: "## Maintenance page is enabled"
     cmd [bl]:
       - curl -fsSL ${baseUrl}/scripts/createMaintenance.sh | /bin/bash -s
-    createFile [bl]:
-      path: /usr/share/nginx/html/.maintenance_off
 
 onInstall:
   - createMagnoliaDataDirectory
