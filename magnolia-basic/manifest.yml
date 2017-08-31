@@ -1,19 +1,21 @@
 type: install
 name: Basic Magnolia CMS
 description: |
-  The JPS manifest contains the following nodes:
+  The JPS manifest contains the following containers:
   * Nginx
   * Tomcat 8.5
   * MariaDB 10
-baseUrl: https://github.com/jdiepeveen/jelastic-jps-magnolia-cms/raw/master
-logo: https://github.com/jdiepeveen/jelastic-jps-magnolia-cms/raw/master/images/view.png
+
+  SSL is enabled by default
+baseUrl: https://github.com/jdiepeveen/jelastic-jps-magnolia-cms/magnolia-basic/raw/master
+logo: https://github.com/jdiepeveen/jelastic-jps-magnolia-cms/magnolia-basic/raw/master/images/view.png
 engine: java8
+ssl: true
 
 globals:
   dbUsername: magnolia
   dbPassword: ${fn.password}
   tomcatDataPath: /data
-  ipRange: 10.0.%
 
 settings:
   fields:
@@ -51,10 +53,16 @@ settings:
 
 nodes:
   - nodeType: nginx
+    count: 1
+    fixedCloudlets: 1
     cloudlets: 4
     nodeGroup: bl
 
-  - nodeType: tomcat85
+  # See: https://hub.docker.com/r/jelastic/tomcat/tags/
+  - nodeType: tomcat
+    tag: 8-latest
+    count: 1
+    fixedCloudlets: 1
     cloudlets: 16
     nodeGroup: cp
     env:
@@ -66,6 +74,8 @@ nodes:
       -  sqldb:db
 
   - nodeType: mariadb10
+    count: 1
+    fixedCloudlets: 1
     cloudlets: 6
     nodeGroup: sqldb
     env:
@@ -74,10 +84,10 @@ nodes:
 
 actions:
   createMagnoliaDataDirectory:
-    createDirectory [tomcat85]: ${globals.tomcatDataPath}/magnolia
+    createDirectory [cp]: ${globals.tomcatDataPath}/magnolia
   createDatabase:
     cmd [sqldb]:
-      - curl -fsSL ${baseUrl}/scripts/createDb.sh | /bin/bash -s ${nodes.sqldb.password} magnolia ${globals.dbPassword} ${nodes.cp[1].address}
+      - curl -fsSL ${baseUrl}/scripts/createDb.sh | /bin/bash -s ${nodes.sqldb.password} magnolia ${globals.dbPassword} ${nodes.cp.address}
   enableAuthentication:
     log: "## Basic authentication is enabled"
     cmd [bl]:
@@ -86,11 +96,12 @@ actions:
     appendFile [bl]:
       path: /etc/jelastic/redeploy.conf
       body: "/etc/nginx/conf.d/basic_auth.conf\n/etc/nginx/conf.d/password.htpasswd"
-#  enableMaintenance:
-#    log: "## Maintenance page is enabled"
-#    # TODO: FIX Permission denied
-#    createFile [bl]:
-#      path: /usr/share/nginx/html/.maintenance_off
+  enableMaintenance:
+    log: "## Maintenance page is enabled"
+    cmd [bl]:
+      - curl -fsSL ${baseUrl}/scripts/createMaintenance.sh | /bin/bash -s
+    createFile [bl]:
+      path: /usr/share/nginx/html/.maintenance_off
 
 onInstall:
   - createMagnoliaDataDirectory
@@ -104,34 +115,34 @@ success:
   text: |
     ### TLDR
     #### Database
-    * url: db:3306
-    * user: ${globals.dbUsername}
-    * password: ${globals.dbPassword}
+    * url: `db:3306`
+    * user: `${globals.dbUsername}`
+    * password: `${globals.dbPassword}`
     #### Magnolia
-    * Public: magnolia.home=${globals.tomcatDataPath}/magnolia/public
-    * Author: magnolia.home=${globals.tomcatDataPath}/magnolia/author
+    * Public: `magnolia.home=${globals.tomcatDataPath}/magnolia/public`
+    * Author: `magnolia.home=${globals.tomcatDataPath}/magnolia/author`
     #### Authentication (if enabled)
-    * username: ${settings.authUsername}
-    * password: ${settings.authPassword}
-
+    * username: `${settings.authUsername}`
+    * password: `${settings.authPassword}`
+    ---
     ### Magnolia settings
     #### Public:
     Create in your project the following folder:
-    '/[project-webapp]/src/main/webapp/WEB-INF/config/${settings.environment}/ROOT/magnolia.properties'
+    `/[project-webapp]/src/main/webapp/WEB-INF/config/${settings.environment}/ROOT/magnolia.properties`
     Add the following properties:
     `magnolia.home=${globals.tomcatDataPath}/magnolia/public`
     ##### DataSource:
     * url: `jdbc:mysql://db:3306/public`
-    * user: ${globals.dbUsername}
-    * password: ${globals.dbPassword} &successText
-    ---
+    * user: `${globals.dbUsername}`
+    * password: `${globals.dbPassword}`
+
     #### Author:
     Create in your project the following folder:
-    '/[project-webapp]/src/main/webapp/WEB-INF/config/${settings.environment}/magnoliaAuthor/magnolia.properties'
+    `/[project-webapp]/src/main/webapp/WEB-INF/config/${settings.environment}/magnoliaAuthor/magnolia.properties`
     Add the following properties:
     `magnolia.home=${globals.tomcatDataPath}/magnolia/author`
     ##### DataSource:
     Use the following settings for the datasource:
     * url: `jdbc:mysql://db:3306/author`
-    * user: ${globals.dbUsername}
-    * password: ${globals.dbPassword}
+    * user: `${globals.dbUsername}`
+    * password: `${globals.dbPassword}`
