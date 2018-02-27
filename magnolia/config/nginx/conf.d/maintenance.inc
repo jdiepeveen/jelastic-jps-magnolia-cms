@@ -3,7 +3,7 @@ geo $maintenance {
     87.249.125.15 1;
 }
 
-set $showMaintenance A;
+set $showMaintenance 0;
 # Check for the maintenance trigger
 if (-f /usr/share/nginx/html/.maintenance) {
     set $maintenance 1;

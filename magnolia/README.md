@@ -1,14 +1,22 @@
-[![Magnolia CMS](images/magnolia_logo.png)](../../../magnolia-cms)
-
+[![Magnolia CMS](../images/magnolia_logo.png)](../magnolia)
 ## Magnolia CMS
 The JPS package deploys an environment containing:
-* Nginx
-* Tomcat 8.5.x
-* MariaDB 10.x
 
 ### Environment Topology
 
+![magnolia-environment-topology](../images/magnolia-environment-topology.png)
+
 ### Specifics
+
+Layer                |    Server   | Number of CTs <br/> by default | Cloudlets per CT <br/> (reserved/dynamic) | Options
+-------------------- | ------------| :----------------------------: | :---------------------------------------: | :-----:
+BL                   |   NGINX     |       1                        |           1 / 16                          | -
+CP                   |   TOMCAT    |       1                        |           1 / 16                          | -
+SQLDB                |   Percona   |       1                        |           1 / 16                          | -
+
+* BL - Load balancer
+* CP - Computing node
+* SQLDB - Database 
 
 ### Deployment
 In order to get this solution instantly deployed, click the "Get It Hosted Now" button, specify your email address within the widget, choose one of the [Jelastic Public Cloud providers](https://jelastic.cloud) and press Install.

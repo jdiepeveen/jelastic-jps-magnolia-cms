@@ -2,4 +2,4 @@
 
 ## Magnolia CMS Collection
 
-* [Magnolia CMS Basic](magnolia-basic/README.md) - a simple setup for a Magnolia CMS project containing a webserver, tomcat and a database container.
+* [Magnolia CMS](magnolia/README.md) - a simple setup for a Magnolia CMS project that contains 1 webserver, 1 application server and 1 database container.
