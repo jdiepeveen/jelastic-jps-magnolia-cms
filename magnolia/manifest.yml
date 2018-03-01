@@ -5,9 +5,9 @@ engine: docker
 ssl: true
 
 globals:
-  dbUsername: magnolia
   dbPassword: ${fn.password}
   tomcatDataPath: /data
+  CATALINA_HOME: /usr/local/tomcat
 
 settings:
   fields:
@@ -63,6 +63,7 @@ nodes:
   - nodeType: docker
     image: tomcat:8.5-alpine
     nodeGroup: cp
+    displayName: Magnolia author
     cloudlets: 16
     env:
       # Disable exposing ports to the outside
@@ -71,8 +72,11 @@ nodes:
       CATALINA_OPTS: -Denvironment=${settings.environment} -Duser.timezone=Europe/Amsterdam
     volumes:
       - /usr/local/tomcat/webapps
-#      /usr/local/tomcat/conf ? or server.xml etc..
+      - /usr/local/tomcat/logs/
+      - /usr/local/tomcat/conf/tomcat-users.xml
+      - /usr/local/tomcat/conf/server.xml
       - /data
+      - /backup
     links:
       -  db:db
 
@@ -83,11 +87,14 @@ nodes:
     env:
       # Disable exposing ports to the outside
       JELASTIC_EXPOSE: DISABLED
+      MYSQL_ROOT_PASSWORD: ${globals.dbPassword}
+      MYSQL_DATABASE: magnolia_author
 
 onInstall:
   - nginxAdjustWorkersCount
   - nginxConfigureDefaultConfig
-  - tomcatRemoveWebapps
+  - tomcatSecurity
+  - tomcatCreateMagnoliaDataDirectory
 
 actions:
   nginxAdjustWorkersCount:
@@ -100,18 +107,45 @@ actions:
     cmd [bl]:
       - curl -fsSL ${baseUrl}/config/nginx/default.conf -o /etc/nginx/conf.d/default.conf
       - sed -i "s/@APP_SERVER_IP@/${nodes.cp[0].intIP}/g" /etc/nginx/conf.d/default.conf;
-#      - sed -i "s/@APP_SERVER_IP_PUBLIC@/${nodes.cp[1].intIP}/g" /etc/nginx/conf.d/default.conf;
-  tomcatRemoveWebapps:
-    log: "## Tomcat - Removing unused webapps"
+#      if (nodes.cp.length > 1):
+#        - sed -i "s/@APP_SERVER_IP_PUBLIC@/${nodes.cp[1].intIP}/g" /etc/nginx/conf.d/default.conf;
+#      - nginx -s reload
+
+  # See: https://github.com/eyaldahari/docker-secured-tomcat/blob/master/Dockerfile
+  tomcatSecurity:
+    log: "## Tomcat - Security hardened"
     forEach(cp:nodes.cp):
       cmd [${@cp.id}]:
-        - rm -rf /usr/local/tomcat/webapps/ROOT
-        - rm -rf /usr/local/tomcat/webapps/docs
-        - rm -rf /usr/local/tomcat/webapps/examples
-        - rm -rf /usr/local/tomcat/webapps/manager
+        - rm -rf ${globals.CATALINA_HOME}/webapps/*
+        - rm -rf ${globals.CATALINA_HOME}/work/Catalina/localhost/*
+        - rm -rf ${globals.CATALINA_HOME}/conf/Catalina/localhost/*
 
-  createMagnoliaDataDirectory:
-    createDirectory [cp]: ${globals.tomcatDataPath}/magnolia
+        # Obscuring server info
+        - mkdir -p ${globals.CATALINA_HOME}/lib/org/apache/catalina/util/
+        - unzip ${globals.CATALINA_HOME}/lib/catalina.jar org/apache/catalina/util/ServerInfo.properties -d ${globals.CATALINA_HOME}/lib/
+        - sed -i 's/server.info=.*/server.info=Apache Tomcat/g' ${globals.CATALINA_HOME}/lib/org/apache/catalina/util/ServerInfo.properties
+        - apk --no-cache add zip
+        - zip -ur ${globals.CATALINA_HOME}/lib/catalina.jar ${globals.CATALINA_HOME}/lib/org/apache/catalina/util/ServerInfo.properties
+        - rm -rf ${globals.CATALINA_HOME}/lib/org
+
+        # Replace the server version string from HTTP headers in server responses AND and secure="true" to <connector>
+        - sed -i 's/<Connector/<Connector server="Apache" secure="true"/g' ${globals.CATALINA_HOME}/conf/server.xml
+
+        # Make tomcat conf dir read only
+        - chmod -R 400 ${globals.CATALINA_HOME}/conf
+
+        # Capture stack traces to non-existent file
+        - curl -fsSL ${baseUrl}/config/tomcat/error-page.xml.snippet -o ${globals.CATALINA_HOME}
+        - sed -i '$d' ${globals.CATALINA_HOME}/conf/web.xml
+        - cat error-page.xml.snippet >> ${globals.CATALINA_HOME}/conf/web.xml
+        - rm error-page.xml.snippet
+
+  tomcatCreateMagnoliaDataDirectory:
+    log: "## Tomcat - Creating magnolia repository directory"
+    forEach(cp:nodes.cp):
+      cmd [${@cp.id}]:
+        - mkdir ${globals.tomcatDataPath}/magnolia
+
   createDatabase:
     cmd [sqldb]:
       - curl -fsSL ${baseUrl}/scripts/createDb.sh | /bin/bash -s ${nodes.sqldb.password} magnolia ${globals.dbPassword} ${nodes.cp.address}
@@ -149,12 +183,15 @@ description: |
 
   SSL is enabled by default
 
+  ## Tomcat
+  This Tomcat container was security hardened according to [OWASP recommondations](https://www.owasp.org/index.php/Securing_tomcat).
+
 success:
   text: |
     ### TLDR
     #### Database
     * url: `db:3306`
-    * user: `${globals.dbUsername}`
+    * user: `root`
     * password: `${globals.dbPassword}`
     #### Magnolia
     * Public: `magnolia.home=${globals.tomcatDataPath}/magnolia/public`
