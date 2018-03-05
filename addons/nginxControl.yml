@@ -1,0 +1,45 @@
+type: update
+name: Custom buttons
+
+targetNodes:
+  nodeGroup: bl
+
+buttons:
+  - confirmText: Custom confirm text
+    loadingText: Load text while waiting
+    action: startNginx
+    caption: Start
+    successText: Configuration saved successfully!
+  - confirmText: Custom confirm text
+    loadingText: Load text while waiting
+    action: stopNginx
+    caption: Stop
+    successText: Configuration saved successfully!
+  - confirmText: Custom confirm text
+    loadingText: Load text while waiting
+    action: reloadNginx
+    caption: Reload
+    successText: Configuration saved successfully!
+
+#menu:
+#  confirmText: Custom confirm text
+#  loadingText: Load text while waiting
+#  action: "nginx -s reload"
+#  caption: Configure
+#  successText: Configuration saved successfully!
+#  settings: config
+#  title: Title
+#  submitButtonText: Button Text
+#  logsPath: "/var/log/add-on-action.log"
+#  logsNodeGroup: cp
+
+actions:
+  stopNginx:
+    cmd [bl]:
+      - nginx -s stop
+  startNginx:
+    cmd [bl]:
+      - nginx -g 'daemon off;'
+  reloadNginx:
+    cmd [bl]:
+      - nginx -s reload

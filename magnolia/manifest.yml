@@ -5,11 +5,12 @@ engine: docker
 ssl: true
 
 globals:
-  dbPassword: ${fn.password}
   MGNL_REPO_PATH: /opt/data/magnolia
   CATALINA_HOME: /usr/local/tomcat
-  DB_NAME_AUTHOR: magnolia-author
-  DB_NAME_PUBLIC: magnolia-public
+
+  DB_MYSQL_ROOT_PASSWORD: ${fn.password}
+  DB_MYSQL_PASSWORD: ${fn.password}
+  DB_MYSQL_DATABASE: magnolia-author
 
 settings:
   fields:
@@ -57,6 +58,7 @@ nodes:
       - /etc/ssl
       - /usr/share/nginx/html
       - /var/log/nginx
+    # Override run command, to fix 'daemon off;' not recognized
     dockerRunCmd: nginx -g 'daemon off;'
 #    Not connecting to proxy_pass http://application:8080 yet
 #    links:
@@ -64,7 +66,7 @@ nodes:
 
   - nodeType: docker
     image: tomcat:8.5-alpine
-    nodeGroup: cp_author
+    nodeGroup: tomcat_author
     displayName: Magnolia author
     cloudlets: 12
     env:
@@ -84,7 +86,7 @@ nodes:
 
   - nodeType: docker
     image: tomcat:8.5-alpine
-    nodeGroup: cp_public
+    nodeGroup: tomcat_public
     displayName: Magnolia public
     cloudlets: 12
     env:
@@ -109,14 +111,19 @@ nodes:
     env:
       # Disable exposing ports to the outside
       JELASTIC_EXPOSE: DISABLED
-      MYSQL_ROOT_PASSWORD: ${globals.dbPassword}
-      MYSQL_DATABASE: ${globals.DB_NAME_AUTHOR}
+      MYSQL_ROOT_PASSWORD: ${globals.DB_MYSQL_ROOT_PASSWORD}
+      MYSQL_USER: magnolia
+      MYSQL_PASSWORD: ${globals.DB_MYSQL_PASSWORD}
+      MYSQL_DATABASE: ${globals.DB_MYSQL_DATABASE}
 
 onInstall:
   - nginxAdjustWorkersCount
   - nginxConfigureDefaultConfig
   - tomcatSecurity
   - tomcatCreateMagnoliaDataDirectory
+
+  # Addons
+  - addonNginxControl
 
 actions:
   nginxAdjustWorkersCount:
@@ -129,9 +136,8 @@ actions:
     log: "## Nginx - Copy default config and replace server ip"
     cmd [bl]:
       - curl -fsSL ${baseUrl}/config/nginx/default.conf -o /etc/nginx/conf.d/default.conf
-      - sed -i "s/@APP_SERVER_IP_AUTHOR@/${nodes.cp_author.intIP}/g" /etc/nginx/conf.d/default.conf;
-    cmd [${nodes.cp_public.id}]:
-      - sed -i "s/@APP_SERVER_IP_PUBLIC@/${nodes.cp_public.intIP}/g" /etc/nginx/conf.d/default.conf;
+      - sed -i "s/@APP_SERVER_IP_AUTHOR@/${nodes.tomcat_author.intIP}/g" /etc/nginx/conf.d/default.conf;
+      - sed -i "s/@APP_SERVER_IP_PUBLIC@/${nodes.tomcat_public.intIP}/g" /etc/nginx/conf.d/default.conf;
 #      - nginx -s reload
 
   # See: https://github.com/eyaldahari/docker-secured-tomcat/blob/master/Dockerfile
@@ -175,6 +181,12 @@ actions:
         cmd [${@node.id}]:
         - mkdir ${globals.MGNL_REPO_PATH}
 
+
+  addonNginxControl:
+    install:
+      jps: ${baseUrl}/addons/nginxControl.yaml
+      nodeGroup: cp
+
   createDatabase:
     cmd [sqldb]:
       - curl -fsSL ${baseUrl}/scripts/createDb.sh | /bin/bash -s ${nodes.sqldb.password} magnolia ${globals.dbPassword} ${nodes.cp.address}
@@ -215,8 +227,28 @@ description: |
   ## Tomcat
   This Tomcat container was security hardened according to [OWASP recommondations](https://www.owasp.org/index.php/Securing_tomcat).
 
-success: ${baseUrl}/text/success.md
-#  text: |
+success:
+  text: |
+
+    ### Magnolia Author Instance
+    URL: ${env.url}
+    Catalina home: ${globals.CATALINA_HOME}
+    Data: ${globals.MGNL_REPO_PATH}/author
+    DB name: ${globals.DB_NAME_AUTHOR}
+    DB user: magnolia@localhost
+
+    ### Magnolia Public Instance
+    URL: ${env.url}magnoliaAuthor/
+    Catalina home: ${globals.CATALINA_HOME}
+    Data: ${globals.MGNL_REPO_PATH}/public
+    DB name: ${globals.DB_NAME_AUTHOR}
+    DB user: magnolia@localhost
+
+    ### Maintenance Mode
+    Maintenance page:
+
+
+    [Image here displaying ]
 #    ### TLDR
 #    #### Database
 #    * url: `db:3306`
