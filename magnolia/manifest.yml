@@ -64,7 +64,7 @@ nodes:
 
   - nodeType: docker
     image: tomcat:8.5-alpine
-    nodeGroup: cp-author
+    nodeGroup: cp_author
     displayName: Magnolia author
     cloudlets: 12
     env:
@@ -80,11 +80,11 @@ nodes:
       - /opt/data
       - /backup
     links:
-      -  db:db
+      - sqldb:db
 
   - nodeType: docker
     image: tomcat:8.5-alpine
-    nodeGroup: cp-public
+    nodeGroup: cp_public
     displayName: Magnolia public
     cloudlets: 12
     env:
@@ -100,12 +100,12 @@ nodes:
       - /opt/data
       - /backup
     links:
-      -  sqldb:db
+      - sqldb:db
 
   - nodeType: docker
     image: percona:latest
     nodeGroup: sqldb
-    cloudlets: 6
+    cloudlets: 8
     env:
       # Disable exposing ports to the outside
       JELASTIC_EXPOSE: DISABLED
@@ -129,10 +129,9 @@ actions:
     log: "## Nginx - Copy default config and replace server ip"
     cmd [bl]:
       - curl -fsSL ${baseUrl}/config/nginx/default.conf -o /etc/nginx/conf.d/default.conf
-      - sed -i "s/@APP_SERVER_IP_AUTHOR@/${nodes.cp-author.intIP}/g" /etc/nginx/conf.d/default.conf;
-    if (nodes.cp-public.length > 1):
-      cmd [${nodes.cp-public.id}]:
-        - sed -i "s/@APP_SERVER_IP_PUBLIC@/${nodes.cp-public.intIP}/g" /etc/nginx/conf.d/default.conf;
+      - sed -i "s/@APP_SERVER_IP_AUTHOR@/${nodes.cp_author.intIP}/g" /etc/nginx/conf.d/default.conf;
+    cmd [${nodes.cp_public.id}]:
+      - sed -i "s/@APP_SERVER_IP_PUBLIC@/${nodes.cp_public.intIP}/g" /etc/nginx/conf.d/default.conf;
 #      - nginx -s reload
 
   # See: https://github.com/eyaldahari/docker-secured-tomcat/blob/master/Dockerfile

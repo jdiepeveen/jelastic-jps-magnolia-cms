@@ -10,13 +10,14 @@ The JPS package deploys an environment containing:
 
 Layer                |    Server   | Number of CTs <br/> by default | Cloudlets per CT <br/> (reserved/dynamic) | Options
 -------------------- | ------------| :----------------------------: | :---------------------------------------: | :-----:
-BL                   |   NGINX     |       1                        |           1 / 16                          | -
-CP                   |   TOMCAT    |       1                        |           1 / 16                          | -
-SQLDB                |   Percona   |       1                        |           1 / 16                          | -
+bl                   |   Nginx     |       1                        |           1 / 8                           | -
+cp-author            |   Tomcat    |       1                        |           1 / 12                          | -
+cp-public            |   Tomcat    |       1                        |           1 / 12                          | -
+sqldb                |   Percona   |       1                        |           1 / 8                           | -
 
-* BL - Load balancer
-* CP - Computing node
-* SQLDB - Database 
+* bl - Load balancer
+* cp - Computing node
+* sqldb - Database 
 
 ### Deployment
 In order to get this solution instantly deployed, click the "Get It Hosted Now" button, specify your email address within the widget, choose one of the [Jelastic Public Cloud providers](https://jelastic.cloud) and press Install.
