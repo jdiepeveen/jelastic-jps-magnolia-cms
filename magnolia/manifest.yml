@@ -6,8 +6,10 @@ ssl: true
 
 globals:
   dbPassword: ${fn.password}
-  tomcatDataPath: /data
+  MGNL_REPO_PATH: /opt/data/magnolia
   CATALINA_HOME: /usr/local/tomcat
+  DB_NAME_AUTHOR: magnolia-author
+  DB_NAME_PUBLIC: magnolia-public
 
 settings:
   fields:
@@ -64,7 +66,7 @@ nodes:
     image: tomcat:8.5-alpine
     nodeGroup: cp
     displayName: Magnolia author
-    cloudlets: 16
+    cloudlets: 12
     env:
       # Disable exposing ports to the outside
       JELASTIC_EXPOSE: DISABLED
@@ -72,10 +74,30 @@ nodes:
       CATALINA_OPTS: -Denvironment=${settings.environment} -Duser.timezone=Europe/Amsterdam
     volumes:
       - /usr/local/tomcat/webapps
-      - /usr/local/tomcat/logs/
+      - /usr/local/tomcat/logs
       - /usr/local/tomcat/conf/tomcat-users.xml
       - /usr/local/tomcat/conf/server.xml
-      - /data
+      - /opt/data
+      - /backup
+    links:
+      -  db:db
+
+  - nodeType: docker
+    image: tomcat:8.5-alpine
+    nodeGroup: cp
+    displayName: Magnolia public
+    cloudlets: 12
+    env:
+      # Disable exposing ports to the outside
+      JELASTIC_EXPOSE: DISABLED
+      # Set environment and timezone variables
+      CATALINA_OPTS: -Denvironment=${settings.environment} -Duser.timezone=Europe/Amsterdam
+    volumes:
+      - /usr/local/tomcat/webapps
+      - /usr/local/tomcat/logs
+      - /usr/local/tomcat/conf/tomcat-users.xml
+      - /usr/local/tomcat/conf/server.xml
+      - /opt/data
       - /backup
     links:
       -  db:db
@@ -88,7 +110,7 @@ nodes:
       # Disable exposing ports to the outside
       JELASTIC_EXPOSE: DISABLED
       MYSQL_ROOT_PASSWORD: ${globals.dbPassword}
-      MYSQL_DATABASE: magnolia_author
+      MYSQL_DATABASE: ${globals.DB_NAME_AUTHOR}
 
 onInstall:
   - nginxAdjustWorkersCount
@@ -106,9 +128,10 @@ actions:
     log: "## Nginx - Copy default config and replace server ip"
     cmd [bl]:
       - curl -fsSL ${baseUrl}/config/nginx/default.conf -o /etc/nginx/conf.d/default.conf
-      - sed -i "s/@APP_SERVER_IP@/${nodes.cp[0].intIP}/g" /etc/nginx/conf.d/default.conf;
-#      if (nodes.cp.length > 1):
-#        - sed -i "s/@APP_SERVER_IP_PUBLIC@/${nodes.cp[1].intIP}/g" /etc/nginx/conf.d/default.conf;
+      - sed -i "s/@APP_SERVER_IP_AUTHOR@/${nodes.cp[0].intIP}/g" /etc/nginx/conf.d/default.conf;
+    if (nodes.cp.length > 1):
+      cmd [${nodes.cp[1].id}]:
+        - sed -i "s/@APP_SERVER_IP_PUBLIC@/${nodes.cp[1].intIP}/g" /etc/nginx/conf.d/default.conf;
 #      - nginx -s reload
 
   # See: https://github.com/eyaldahari/docker-secured-tomcat/blob/master/Dockerfile
@@ -135,16 +158,16 @@ actions:
         - chmod -R 400 ${globals.CATALINA_HOME}/conf
 
         # Capture stack traces to non-existent file
-        - curl -fsSL ${baseUrl}/config/tomcat/error-page.xml.snippet -o ${globals.CATALINA_HOME}
+        - curl -fsSL ${baseUrl}/config/tomcat/error-page.xml.snippet -o ${globals.CATALINA_HOME}/error-page.xml.snippet
         - sed -i '$d' ${globals.CATALINA_HOME}/conf/web.xml
-        - cat error-page.xml.snippet >> ${globals.CATALINA_HOME}/conf/web.xml
-        - rm error-page.xml.snippet
+        - cat ${globals.CATALINA_HOME}/error-page.xml.snippet >> ${globals.CATALINA_HOME}/conf/web.xml
+        - rm ${globals.CATALINA_HOME}/error-page.xml.snippet
 
   tomcatCreateMagnoliaDataDirectory:
     log: "## Tomcat - Creating magnolia repository directory"
     forEach(cp:nodes.cp):
       cmd [${@cp.id}]:
-        - mkdir ${globals.tomcatDataPath}/magnolia
+        - mkdir ${globals.MGNL_REPO_PATH}
 
   createDatabase:
     cmd [sqldb]:
@@ -186,7 +209,7 @@ description: |
   ## Tomcat
   This Tomcat container was security hardened according to [OWASP recommondations](https://www.owasp.org/index.php/Securing_tomcat).
 
-success:
+success: /text/success.md
   text: |
     ### TLDR
     #### Database
@@ -194,8 +217,8 @@ success:
     * user: `root`
     * password: `${globals.dbPassword}`
     #### Magnolia
-    * Public: `magnolia.home=${globals.tomcatDataPath}/magnolia/public`
-    * Author: `magnolia.home=${globals.tomcatDataPath}/magnolia/author`
+    * Public: `magnolia.home=${globals.MGNL_REPO_PATH}/public`
+    * Author: `magnolia.home=${globals.MGNL_REPO_PATH}/author`
     #### Authentication (if enabled)
     * username: `${settings.authUsername}`
     * password: `${settings.authPassword}`
