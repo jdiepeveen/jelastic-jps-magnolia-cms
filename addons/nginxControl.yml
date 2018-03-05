@@ -1,5 +1,5 @@
 type: update
-name: Custom buttons
+name: Nginx control
 
 targetNodes:
   nodeGroup: bl
@@ -9,29 +9,17 @@ buttons:
     loadingText: Load text while waiting
     action: startNginx
     caption: Start
-    successText: Configuration saved successfully!
+    successText: Nginx started successfully!
   - confirmText: Custom confirm text
     loadingText: Load text while waiting
     action: stopNginx
     caption: Stop
-    successText: Configuration saved successfully!
+    successText: Nginx stopped successfully!
   - confirmText: Custom confirm text
     loadingText: Load text while waiting
     action: reloadNginx
     caption: Reload
-    successText: Configuration saved successfully!
-
-#menu:
-#  confirmText: Custom confirm text
-#  loadingText: Load text while waiting
-#  action: "nginx -s reload"
-#  caption: Configure
-#  successText: Configuration saved successfully!
-#  settings: config
-#  title: Title
-#  submitButtonText: Button Text
-#  logsPath: "/var/log/add-on-action.log"
-#  logsNodeGroup: cp
+    successText: Nginx reloaded successfully!
 
 actions:
   stopNginx:
@@ -43,3 +31,8 @@ actions:
   reloadNginx:
     cmd [bl]:
       - nginx -s reload
+
+responses:
+  4036:
+    type: error
+    message: file path already exists

@@ -1,6 +1,6 @@
 type: install
 name: Basic Magnolia CMS
-baseUrl: https://github.com/jdiepeveen/jelastic-jps-magnolia-cms/raw/master/magnolia
+baseUrl: https://github.com/jdiepeveen/jelastic-jps-magnolia-cms/raw/master
 engine: docker
 ssl: true
 
@@ -58,7 +58,6 @@ nodes:
       - /etc/ssl
       - /usr/share/nginx/html
       - /var/log/nginx
-    # Override run command, to fix 'daemon off;' not recognized
     dockerRunCmd: nginx -g 'daemon off;'
 #    Not connecting to proxy_pass http://application:8080 yet
 #    links:
@@ -123,7 +122,7 @@ onInstall:
   - tomcatCreateMagnoliaDataDirectory
 
   # Addons
-  - addonNginxControl
+#  - addonNginxControl
 
 actions:
   nginxAdjustWorkersCount:
@@ -135,7 +134,7 @@ actions:
   nginxConfigureDefaultConfig:
     log: "## Nginx - Copy default config and replace server ip"
     cmd [bl]:
-      - curl -fsSL ${baseUrl}/config/nginx/default.conf -o /etc/nginx/conf.d/default.conf
+      - curl -fsSL ${baseUrl}/magnolia/config/nginx/default.conf -o /etc/nginx/conf.d/default.conf
       - sed -i "s/@APP_SERVER_IP_AUTHOR@/${nodes.tomcat_author.intIP}/g" /etc/nginx/conf.d/default.conf;
       - sed -i "s/@APP_SERVER_IP_PUBLIC@/${nodes.tomcat_public.intIP}/g" /etc/nginx/conf.d/default.conf;
 #      - nginx -s reload
@@ -167,7 +166,7 @@ actions:
         - chmod -R 400 ${globals.CATALINA_HOME}/conf
 
         # Capture stack traces to non-existent file
-        - curl -fsSL ${baseUrl}/config/tomcat/error-page.xml.snippet -o ${globals.CATALINA_HOME}/error-page.xml.snippet
+        - curl -fsSL ${baseUrl}/magnolia/config/tomcat/error-page.xml.snippet -o ${globals.CATALINA_HOME}/error-page.xml.snippet
         - sed -i '$d' ${globals.CATALINA_HOME}/conf/web.xml
         - cat ${globals.CATALINA_HOME}/error-page.xml.snippet >> ${globals.CATALINA_HOME}/conf/web.xml
         - rm ${globals.CATALINA_HOME}/error-page.xml.snippet
@@ -181,21 +180,20 @@ actions:
         cmd [${@node.id}]:
         - mkdir ${globals.MGNL_REPO_PATH}
 
-
   addonNginxControl:
     install:
-      jps: ${baseUrl}/addons/nginxControl.yaml
-      nodeGroup: cp
+      jps: ${baseUrl}/addons/nginxControl.yml
+      nodeGroup: bl
 
   createDatabase:
     cmd [sqldb]:
-      - curl -fsSL ${baseUrl}/scripts/createDb.sh | /bin/bash -s ${nodes.sqldb.password} magnolia ${globals.dbPassword} ${nodes.cp.address}
+      - curl -fsSL ${baseUrl}/magnolia/scripts/createDb.sh | /bin/bash -s ${nodes.sqldb.password} magnolia ${globals.dbPassword} ${nodes.cp.address}
   enableAuthentication:
     if (settings.authentication == 'enabled'):
       log: "## Basic authentication is enabled"
       cmd [bl]:
-        - curl -fsSL ${baseUrl}/scripts/createHtaccess.sh | /bin/bash -s ${settings.authUsername} ${settings.authPassword}
-        - curl -fsSL ${baseUrl}/config/nginx/conf.d/basic_auth.conf -o /etc/nginx/conf.d/basic_auth.conf
+        - curl -fsSL ${baseUrl}/magnolia/scripts/createHtaccess.sh | /bin/bash -s ${settings.authUsername} ${settings.authPassword}
+        - curl -fsSL ${baseUrl}/magnolia/config/nginx/conf.d/basic_auth.conf -o /etc/nginx/conf.d/basic_auth.conf
       appendFile [bl]:
         path: /etc/jelastic/redeploy.conf
         body: "/etc/nginx/conf.d/basic_auth.conf\n/etc/nginx/conf.d/password.htpasswd"
@@ -203,8 +201,8 @@ actions:
     if (settings.maintenance == true):
       log: "## Maintenance page is enabled"
       cmd [bl]:
-        - curl -fsSL ${baseUrl}/config/nginx/conf.d/maintenance.inc -o /etc/nginx/conf.d/maintenance.inc
-        - curl -fsSL ${baseUrl}/scripts/createMaintenance.sh | /bin/bash -s
+        - curl -fsSL ${baseUrl}/magnolia/config/nginx/conf.d/maintenance.inc -o /etc/nginx/conf.d/maintenance.inc
+        - curl -fsSL ${baseUrl}/magnolia/scripts/createMaintenance.sh | /bin/bash -s
       # Some replace in file for location / { and add include conf.d/maintenance.inc
       appendFile [bl]:
         path: /etc/jelastic/redeploy.conf
