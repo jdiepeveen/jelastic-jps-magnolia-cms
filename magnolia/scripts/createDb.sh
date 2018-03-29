@@ -7,7 +7,7 @@ NEW_PASS=$3
 # Create application-specific user
 # And disable remote root login
 mysql -u${USER} -p${PASSWORD} << END
-    CREATE DATABASE IF NOT EXISTS magnolia-public CHARACTER SET utf8 COLLATE utf8_general_ci;
+    CREATE DATABASE IF NOT EXISTS magnolia-public;
 
     CREATE USER '${NEW_USER}'@'%' IDENTIFIED BY '${NEW_PASS}';
     GRANT ALL ON magnolia-public.* TO '${NEW_USER}'@'%';
