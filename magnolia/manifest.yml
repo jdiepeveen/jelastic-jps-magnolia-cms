@@ -10,7 +10,7 @@ globals:
 
   DB_MYSQL_ROOT_PASSWORD: ${fn.password}
   DB_MYSQL_PASSWORD: ${fn.password}
-  DB_MYSQL_DATABASE: magnolia-author
+  DB_MYSQL_DATABASE: magnolia_author
 
 settings:
   fields:
@@ -232,14 +232,16 @@ success:
     URL: ${env.url}
     Catalina home: ${globals.CATALINA_HOME}
     Data: ${globals.MGNL_REPO_PATH}/author
-    DB name: ${globals.DB_NAME_AUTHOR}
+    DB url: jdbc:mysql://DB:3306/magolia_author
+    DB name: magnolia_author
     DB user: magnolia@localhost
 
     ### Magnolia Public Instance
     URL: ${env.url}magnoliaAuthor/
     Catalina home: ${globals.CATALINA_HOME}
     Data: ${globals.MGNL_REPO_PATH}/public
-    DB name: ${globals.DB_NAME_AUTHOR}
+    DB url: jdbc:mysql://DB:3306/magolia_public
+    DB name: magolia_public
     DB user: magnolia@localhost
 
     ## Maintenance Mode
