@@ -181,7 +181,7 @@ actions:
 
   createDatabase:
     cmd [sqldb]:
-      - curl -fsSL ${baseUrl}/magnolia/scripts/createDb.sh | /bin/bash -s ${globals.DB_MYSQL_ROOT_PASSWORD} magnolia ${globals.DB_MYSQL_PASSWORD} ${nodes.cp.address}
+      - curl -fsSL ${baseUrl}/magnolia/scripts/createDb.sh | /bin/bash -s ${globals.DB_MYSQL_ROOT_PASSWORD} magnolia ${globals.DB_MYSQL_PASSWORD}
 
   addonNginxControl:
     install:
@@ -222,7 +222,7 @@ description: |
 
   SSL is enabled by default
 
-  ## Tomcat
+  #### Tomcat
   This Tomcat container was security hardened according to [OWASP recommondations](https://www.owasp.org/index.php/Securing_tomcat).
 
 success:
