@@ -31,8 +31,3 @@ actions:
   reloadNginx:
     cmd [bl]:
       - nginx -s reload
-
-responses:
-  4036:
-    type: error
-    message: file path already exists

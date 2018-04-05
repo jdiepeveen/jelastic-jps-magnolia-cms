@@ -58,35 +58,12 @@ nodes:
       - /etc/ssl
       - /usr/share/nginx/html
       - /var/log/nginx
+      - /etc/letsencrypt
     dockerRunCmd: nginx -g 'daemon off;'
-#    Not connecting to proxy_pass http://application:8080 yet
-#    links:
-#      - cp:application
 
   - nodeType: docker
     image: tomcat:8.5-alpine
-    nodeGroup: tomcat_magnolia_author
-    displayName: Magnolia author
-    cloudlets: 12
-    env:
-      # Disable exposing ports to the outside
-      JELASTIC_EXPOSE: DISABLED
-      # Set environment and timezone variables
-      CATALINA_OPTS: -Denvironment=${settings.environment} -Duser.timezone=Europe/Amsterdam
-    volumes:
-      - /usr/local/tomcat/webapps
-      - /usr/local/tomcat/logs
-      - /usr/local/tomcat/conf/tomcat-users.xml
-      - /usr/local/tomcat/conf/server.xml
-      - /opt/data
-      - /backup
-    links:
-      - sqldb:DB
-
-  - nodeType: docker
-    image: tomcat:8.5-alpine
-    nodeGroup: tomcat_magnolia_public
-    displayName: Magnolia public
+    nodeGroup: cp
     cloudlets: 12
     env:
       # Disable exposing ports to the outside
@@ -120,6 +97,7 @@ nodes:
 onInstall:
   - nginxAdjustWorkersCount
   - nginxConfigureDefaultConfig
+  - tomcatPostInstallation
   - tomcatSecurity
   - tomcatCreateMagnoliaDataDirectory
   - createDatabase
@@ -137,56 +115,63 @@ actions:
   nginxConfigureDefaultConfig:
     log: "## Nginx - Copy default config and replace server ip"
     cmd [bl]:
-      - curl -fsSL ${baseUrl}/magnolia/config/nginx/default.conf -o /etc/nginx/conf.d/default.conf
-      - sed -i "s/@APP_SERVER_IP_AUTHOR@/${nodes.tomcat_magnolia_author.intIP}/g" /etc/nginx/conf.d/default.conf;
-      - sed -i "s/@APP_SERVER_IP_PUBLIC@/${nodes.tomcat_magnolia_public.intIP}/g" /etc/nginx/conf.d/default.conf;
+      - curl -fsSL ${baseUrl}/magnolia/config/nginx/conf.d/default.conf -o /etc/nginx/conf.d/default.conf
+      - curl -fsSL ${baseUrl}/magnolia/config/nginx/conf.d/headers.inc -o /etc/nginx/conf.d/headers.inc
+      - curl -fsSL ${baseUrl}/magnolia/config/nginx/conf.d/locations.inc -o /etc/nginx/conf.d/locations.inc
+      - curl -fsSL ${baseUrl}/magnolia/config/nginx/conf.d/upstream.inc -o /etc/nginx/conf.d/upstream.inc
+      - sed -i "s/@APP_SERVER_IP@/${nodes.cp.intIP}/g" /etc/nginx/conf.d/upstream.inc;
 #      - nginx -s reload
+    if (settings.environment == 'production'):
+      log: "## Nginx - Copy production config"
+      cmd [bl]:
+        - curl -fsSL ${baseUrl}/magnolia/config/nginx/conf.d/default.prod.conf.disabled -o /etc/nginx/conf.d/default.prod.conf.disabled
+
+  tomcatPostInstallation:
+    log: "## Tomcat - Post install configuration"
+    cmd [cp]:
+      - apk add --no-cache rsync
 
   # See: https://github.com/eyaldahari/docker-secured-tomcat/blob/master/Dockerfile
   tomcatSecurity:
     log: "## Tomcat - Security hardened"
-    forEach(node:nodes):
-      if ("${@node.name}" == "tomcat"):
-        cmd [${@node.id}]:
-        - rm -rf ${globals.CATALINA_HOME}/webapps/*
-        - rm -rf ${globals.CATALINA_HOME}/work/Catalina/localhost/*
-        - rm -rf ${globals.CATALINA_HOME}/conf/Catalina/localhost/*
+    cmd [cp]:
+      - rm -rf /usr/local/tomcat/webapps/*
+      - rm -rf /usr/local/tomcat/work/Catalina/localhost/*
+      - rm -rf /usr/local/tomcat/conf/Catalina/localhost/*
 
-        # Obscuring server info
-        - mkdir -p ${globals.CATALINA_HOME}/lib/org/apache/catalina/util/
-        - unzip ${globals.CATALINA_HOME}/lib/catalina.jar org/apache/catalina/util/ServerInfo.properties -d ${globals.CATALINA_HOME}/lib/
-        - sed -i 's/server.info=.*/server.info=Apache Tomcat/g' ${globals.CATALINA_HOME}/lib/org/apache/catalina/util/ServerInfo.properties
-        - apk --no-cache add zip
-        - zip -ur ${globals.CATALINA_HOME}/lib/catalina.jar ${globals.CATALINA_HOME}/lib/org/apache/catalina/util/ServerInfo.properties
-        - rm -rf ${globals.CATALINA_HOME}/lib/org
+      # Obscuring server info
+      - mkdir -p /usr/local/tomcat/lib/org/apache/catalina/util/
+      - unzip /usr/local/tomcat/lib/catalina.jar org/apache/catalina/util/ServerInfo.properties -d /usr/local/tomcat/lib/
+      - sed -i 's/server.info=.*/server.info=Apache Tomcat/g' /usr/local/tomcat/lib/org/apache/catalina/util/ServerInfo.properties
+      - apk --no-cache add zip
+      - zip -ur /usr/local/tomcat/lib/catalina.jar /usr/local/tomcat/lib/org/apache/catalina/util/ServerInfo.properties
+      - rm -rf /usr/local/tomcat/lib/org
 
-        # Replace the server version string from HTTP headers in server responses AND and secure="true" to <connector>
-        - sed -i 's/<Connector/<Connector server="Apache" secure="true"/g' ${globals.CATALINA_HOME}/conf/server.xml
+      # Replace the server version string from HTTP headers in server responses AND and secure="true" to <connector>
+      - sed -i 's/<Connector/<Connector server="Apache" secure="true"/g' /usr/local/tomcat/conf/server.xml
 
-        # Make tomcat conf dir read only
-        - chmod -R 400 ${globals.CATALINA_HOME}/conf
+      # Make tomcat conf dir read only
+      - chmod -R 400 /usr/local/tomcat/conf
 
-        # Capture stack traces to non-existent file
-        - curl -fsSL ${baseUrl}/magnolia/config/tomcat/error-page.xml.snippet -o ${globals.CATALINA_HOME}/error-page.xml.snippet
-        - sed -i '$d' ${globals.CATALINA_HOME}/conf/web.xml
-        - cat ${globals.CATALINA_HOME}/error-page.xml.snippet >> ${globals.CATALINA_HOME}/conf/web.xml
-        - rm ${globals.CATALINA_HOME}/error-page.xml.snippet
+      # Capture stack traces to non-existent file
+      - curl -fsSL ${baseUrl}/magnolia/config/tomcat/error-page.xml.snippet -o /usr/local/tomcat/error-page.xml.snippet
+      - sed -i '$d' /usr/local/tomcat/conf/web.xml
+      - cat /usr/local/tomcat/error-page.xml.snippet >> /usr/local/tomcat/conf/web.xml
+      - rm /usr/local/tomcat/error-page.xml.snippet
 
   tomcatCreateMagnoliaDataDirectory:
     log: "## Tomcat - Creating magnolia repository directory"
-    forEach(node:nodes):
-      if ("${@node.name}" == "tomcat"}:
-        cmd [${@node.id}]:
-        - mkdir ${globals.MGNL_REPO_PATH}
+    cmd [cp]:
+      - mkdir ${globals.MGNL_REPO_PATH}
 
   createDatabase:
     cmd [sqldb]:
       - curl -fsSL ${baseUrl}/magnolia/scripts/createDb.sh | /bin/bash -s ${globals.DB_MYSQL_ROOT_PASSWORD} magnolia ${globals.DB_MYSQL_PASSWORD}
 
-  addonNginxControl:
-    install:
-      jps: ${baseUrl}/addons/nginxControl.yml
-      nodeGroup: bl
+#  addonNginxControl:
+#    install:
+#      jps: ${baseUrl}/addons/nginxControl.yml
+#      nodeGroup: bl
 
 #  enableAuthentication:
 #    if (settings.authentication == 'enabled'):
@@ -230,7 +215,7 @@ success:
 
     ### Magnolia Author Instance
     URL: ${env.url}
-    Catalina home: ${globals.CATALINA_HOME}
+    Catalina home: /usr/local/tomcat
     Data: ${globals.MGNL_REPO_PATH}/author
     DB url: jdbc:mysql://DB:3306/magolia_author
     DB name: magnolia_author
@@ -238,7 +223,7 @@ success:
 
     ### Magnolia Public Instance
     URL: ${env.url}magnoliaAuthor/
-    Catalina home: ${globals.CATALINA_HOME}
+    Catalina home: /usr/local/tomcat
     Data: ${globals.MGNL_REPO_PATH}/public
     DB url: jdbc:mysql://DB:3306/magolia_public
     DB name: magolia_public
